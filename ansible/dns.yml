@@ -1,0 +1,79 @@
+- name: Sett opp DNS (Bind9) på Infra
+  hosts: infra
+  become: true
+
+  tasks:
+    - name: Installer Bind9 og verktøy
+      apt:
+        name:
+          - bind9
+          - bind9utils
+          - bind9-doc
+          - dnsutils
+        state: present
+
+    - name: Konfigurer named.conf.options
+      copy:
+        dest: /etc/bind/named.conf.options
+        content: |
+          options {
+              directory "/var/cache/bind";
+              
+              forwarders {
+                  1.1.1.1;
+                  8.8.8.8;
+              };
+
+              dnssec-validation auto;
+              listen-on-v6 { any; };
+              allow-query { any; };
+          };
+      notify: Restart Bind9
+
+    - name: Definer sonen skole.lan i named.conf.local
+      copy:
+        dest: /etc/bind/named.conf.local
+        content: |
+          zone "skole.lan" {
+              type master;
+              file "/etc/bind/db.skole.lan";
+          };
+      notify: Restart Bind9
+
+    - name: Opprett sonefilen db.skole.lan
+      copy:
+        dest: /etc/bind/db.skole.lan
+        force: yes
+        content: |
+          ;
+          ; BIND data file for skole.lan
+          ;
+          $TTL    604800
+          @       IN      SOA     infra.skole.lan. root.skole.lan. (
+                                2         ; Serial
+                           604800         ; Refresh
+                            86400         ; Retry
+                          2419200         ; Expire
+                           604800 )       ; Negative Cache TTL
+          ;
+          ; NAVNESERVER (NS)
+          @       IN      NS      infra.skole.lan.
+
+          ; A-RECORDS (Navn -> IP)
+          @       IN      A       10.10.10.10
+          infra   IN      A       10.10.10.10
+          gw      IN      A       10.10.10.1
+          file    IN      A       10.10.10.20
+          win     IN      A       10.10.10.50
+
+    - name: Åpne for DNS i brannmuren (Port 53)
+      ufw:
+        rule: allow
+        port: '53'
+      notify: Restart Bind9
+
+  handlers:
+    - name: Restart Bind9
+      service:
+        name: named
+        state: restarted

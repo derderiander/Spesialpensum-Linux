@@ -1,0 +1,9 @@
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      addresses:
+        - 10.10.10.20/24
+      gateway4: 10.10.10.1
+      nameservers:
+        addresses: [10.10.10.10]

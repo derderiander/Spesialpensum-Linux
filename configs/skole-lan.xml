@@ -1,0 +1,7 @@
+<network>
+  <name>skole-lan</name>
+  <bridge name='virbr1' stp='on' delay='0'/>
+  <domain name='skole.lan'/>
+  <ip address='10.10.10.1' netmask='255.255.255.0'>
+  </ip>
+</network>

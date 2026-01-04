@@ -1,0 +1,108 @@
+- name: Konfigurer Skole-Filserver
+  hosts: file
+  become: true
+  vars:
+    share_root: /skole-data
+
+    ssh_public_keys:
+      truls: "<OFFENTLIG_NØKKEL_FOR_TRULS>"
+      kari: "<OFFENTLIG_NØKKEL_FOR_KARI>"
+
+  tasks:
+    - name: Opprett lærergruppe (med æ)
+      group:
+        name: lærer
+        state: present
+
+    - name: Opprett elevgruppe
+      group:
+        name: elever
+        state: present
+
+    - name: Opprett test-lærer (Truls)
+      user:
+        name: truls
+        groups: lærer
+        shell: /bin/bash
+        password_lock: true
+
+    - name: Legg til SSH-nokkel for Truls
+      authorized_key:
+        user: truls
+        state: present
+        key: "{{ ssh_public_keys.truls }}"
+
+    - name: Opprett test-elev (Kari)
+      user:
+        name: kari
+        groups: elever
+        shell: /bin/bash
+        password_lock: true
+
+    - name: Legg til SSH-nokkel for Kari
+      authorized_key:
+        user: kari
+        state: present
+        key: "{{ ssh_public_keys.kari }}"
+
+    - name: Installer Samba
+      apt:
+        name: samba
+        state: present
+
+    - name: Lag hovedmappe
+      file:
+        path: "{{ share_root }}"
+        state: directory
+        mode: '0755'
+
+    - name: Lag Lærer-område
+      file:
+        path: "{{ share_root }}/lærer_kun"
+        state: directory
+        owner: root
+        group: lærer
+        mode: '2770'
+
+    - name: Lag Elev-område
+      file:
+        path: "{{ share_root }}/elev_innlevering"
+        state: directory
+        owner: root
+        group: lærer
+        mode: '2775'
+
+    - name: Konfigurer smb.conf
+      blockinfile:
+        path: /etc/samba/smb.conf
+        block: |
+          [Lærer_Privat]
+          path = {{ share_root }}/lærer_kun
+          valid users = @lærer
+          writable = yes
+          browsable = yes
+          create mask = 0660
+          directory mask = 2770
+
+          [Innlevering]
+          path = {{ share_root }}/elev_innlevering
+          writable = yes
+          browsable = yes
+          valid users = @elever @lærer
+      notify: Restart Samba
+
+    - name: Sett samba-passord for Truls
+      shell: "(echo {{ temp_samba_pass }}; echo {{ temp_samba_pass }}) | smbpasswd -s -a truls"
+      no_log: true
+      when: temp_samba_pass is defined
+
+    - name: Sett samba-passord for Kari
+      shell: "(echo {{ temp_samba_pass }}; echo {{ temp_samba_pass }}) | smbpasswd -s -a kari"
+      no_log: true
+      when: temp_samba_pass is defined
+
+  handlers:
+    - name: Restart Samba
+      service:
+        name: smbd
+        state: restarted

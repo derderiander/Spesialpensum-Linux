@@ -1,0 +1,53 @@
+# --- Secrets and local overrides ---
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.ppk
+*.vault
+*.vault.yml
+*.vault.yaml
+secrets.yml
+secrets.yaml
+inventory.local
+hosts.local
+ansible/hosts.local
+ansible/group_vars/**/vault.yml
+ansible/host_vars/**/vault.yml
+
+# --- Ansible artifacts ---
+*.retry
+ansible/*.log
+ansible/.ansible_cache/
+ansible/cp/
+
+# --- Python / Ansible dependencies ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+
+# --- Linux System Files ---
+.DS_Store
+.directory
+*~
+*.swp
+*.swo
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# --- Virtualization / Images ---
+*.iso
+*.qcow2
+*.vdi
+*.vmdk
+*.img

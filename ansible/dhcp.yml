@@ -1,0 +1,41 @@
+- name: Sett opp DHCP-server på Infra
+  hosts: infra
+  become: true
+  vars:
+    dhcp_interface: "enp1s0"
+  tasks:
+    - name: Installer DHCP-server
+      apt:
+        name: isc-dhcp-server
+        state: present
+
+    - name: Konfigurer hvilket kort DHCP skal lytte på
+      lineinfile:
+        path: /etc/default/isc-dhcp-server
+        regexp: '^INTERFACESv4='
+        line: 'INTERFACESv4="{{ dhcp_interface }}"'
+
+    - name: Konfigurer dhcpd.conf
+      blockinfile:
+        path: /etc/dhcp/dhcpd.conf
+        create: yes
+        block: |
+          # Innstillinger
+          default-lease-time 600;
+          max-lease-time 7200;
+          authoritative;
+
+          # Skole-LAN
+          subnet 10.10.10.0 netmask 255.255.255.0 {
+            range 10.10.10.100 10.10.10.200;
+            option routers 10.10.10.1;
+            option domain-name-servers 1.1.1.1, 8.8.8.8;
+            option domain-name "skole.lan";
+          }
+      notify: Restart DHCP
+
+  handlers:
+    - name: Restart DHCP
+      service:
+        name: isc-dhcp-server
+        state: restarted
